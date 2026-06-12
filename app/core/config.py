@@ -5,6 +5,8 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
     DEBUG: bool = True
     DATABASE_URL: str
+    OPENAI_API_KEY: str = ""
+    LLM_MODEL: str = "gpt-4o-mini"
 
     class Config:
         env_file = ".env"

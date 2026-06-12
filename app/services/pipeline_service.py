@@ -3,7 +3,7 @@ from sqlalchemy import desc
 from uuid import UUID
 from typing import List, Optional
 
-from app.models.pipeline import Pipeline, PipelineRun
+from app.models.pipeline import Pipeline, PipelineRun, AIAnalysis, PipelineStatus
 from app.schemas.pipeline import PipelineCreate, PipelineRunCreate
 
 
@@ -82,7 +82,88 @@ class PipelineRunService:
         db: Session,
         limit: int = 10
     ) -> List[PipelineRun]:
-        from app.models.pipeline import PipelineStatus
         return db.query(PipelineRun).filter(
             PipelineRun.status == PipelineStatus.failed
         ).order_by(desc(PipelineRun.created_at)).limit(limit).all()
+
+    @staticmethod
+    def get_run_by_id(
+        db: Session,
+        run_id: UUID
+    ) -> Optional[PipelineRun]:
+        return db.query(PipelineRun).filter(
+            PipelineRun.id == run_id
+        ).first()
+
+
+class AIAnalysisService:
+
+    @staticmethod
+    def analyze_run(db: Session, run_id: UUID) -> Optional[AIAnalysis]:
+        """
+        Main method — fetches a failed run, calls AI analyzer,
+        stores and returns the result.
+        """
+        from app.services.ai_analyzer import ai_analyzer
+
+        run = db.query(PipelineRun).filter(
+            PipelineRun.id == run_id
+        ).first()
+
+        if not run:
+            return None
+
+        if run.status != PipelineStatus.failed:
+            return None
+
+        existing = db.query(AIAnalysis).filter(
+            AIAnalysis.run_id == run_id
+        ).first()
+        if existing:
+            return existing
+
+        pipeline = db.query(Pipeline).filter(
+            Pipeline.id == run.pipeline_id
+        ).first()
+
+        logs = run.logs or "No logs available for this run."
+
+        result = ai_analyzer.analyze_failure(
+            logs=logs,
+            pipeline_name=pipeline.name if pipeline else "Unknown",
+            branch=run.branch or "main",
+            triggered_by=run.triggered_by or "unknown"
+        )
+
+        if not result["success"]:
+            return None
+
+        analysis_data = result["analysis"]
+
+        analysis = AIAnalysis(
+            run_id=run_id,
+            root_cause=analysis_data.get("root_cause", "Unknown"),
+            fix_suggestion=analysis_data.get("fix_suggestion", "Unknown"),
+            severity=analysis_data.get("severity", "medium"),
+            error_category=analysis_data.get("error_category", "unknown"),
+            confidence=analysis_data.get("confidence", "low"),
+            summary=analysis_data.get("summary", ""),
+            model_used=analysis_data.get("model_used", "gpt-4o-mini")
+        )
+
+        db.add(analysis)
+        db.commit()
+        db.refresh(analysis)
+        return analysis
+
+    @staticmethod
+    def get_analysis_for_run(
+        db: Session,
+        run_id: UUID
+    ) -> Optional[AIAnalysis]:
+        """
+        Fetch existing analysis for a run — no AI call.
+        """
+        return db.query(AIAnalysis).filter(
+            AIAnalysis.run_id == run_id
+        ).first()

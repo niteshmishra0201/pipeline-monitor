@@ -1,16 +1,19 @@
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, Enum
+from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, Enum, Float, ForeignKey
 from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 import uuid
 import enum
 
 from app.core.database import Base
 
+
 class PipelineStatus(enum.Enum):
     success = "success"
     failed = "failed"
     running = "running"
     cancelled = "cancelled"
+
 
 class Pipeline(Base):
     __tablename__ = "pipelines"
@@ -23,14 +26,17 @@ class Pipeline(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
+    runs = relationship("PipelineRun", back_populates="pipeline")
+
     def __repr__(self):
         return f"<Pipeline {self.name}>"
+
 
 class PipelineRun(Base):
     __tablename__ = "pipeline_runs"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    pipeline_id = Column(UUID(as_uuid=True), nullable=False)
+    pipeline_id = Column(UUID(as_uuid=True), ForeignKey("pipelines.id"), nullable=False)
     run_number = Column(Integer, nullable=False)
     status = Column(Enum(PipelineStatus), nullable=False)
     branch = Column(String(100))
@@ -43,5 +49,28 @@ class PipelineRun(Base):
     logs = Column(Text)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
+    pipeline = relationship("Pipeline", back_populates="runs")
+    ai_analysis = relationship("AIAnalysis", back_populates="run", uselist=False)
+
     def __repr__(self):
         return f"<PipelineRun {self.id} - {self.status}>"
+
+
+class AIAnalysis(Base):
+    __tablename__ = "ai_analyses"
+
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    run_id = Column(UUID(as_uuid=True), ForeignKey("pipeline_runs.id"), nullable=False, unique=True)
+    root_cause = Column(Text, nullable=False)
+    fix_suggestion = Column(Text, nullable=False)
+    severity = Column(String(20))
+    error_category = Column(String(50))
+    confidence = Column(String(20))
+    summary = Column(Text)
+    model_used = Column(String(100))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    run = relationship("PipelineRun", back_populates="ai_analysis")
+
+    def __repr__(self):
+        return f"<AIAnalysis for run {self.run_id}>"
