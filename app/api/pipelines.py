@@ -11,7 +11,9 @@ from app.schemas.pipeline import (
     PipelineRunResponse,
     PipelineRunWithAnalysis,
     AIAnalysisResponse,
-    PipelineRunCreate
+    PipelineRunCreate,
+    AnalysisTaskResponse,
+    TaskStatusResponse
 )
 from app.services.pipeline_service import (
     PipelineService,
@@ -19,6 +21,8 @@ from app.services.pipeline_service import (
     AIAnalysisService
 )
 from app.models.pipeline import PipelineStatus
+from app.tasks.analysis_tasks import analyze_pipeline_run
+from app.core.celery_app import celery_app
 
 router = APIRouter(
     prefix="/pipelines",
@@ -140,14 +144,18 @@ def get_run_with_analysis(
 
 @router.post(
     "/runs/{run_id}/analyze",
-    response_model=AIAnalysisResponse,
-    status_code=status.HTTP_201_CREATED
+    response_model=AnalysisTaskResponse,
+    status_code=status.HTTP_202_ACCEPTED
 )
 def analyze_run(
     run_id: UUID,
     db: Session = Depends(get_db)
 ):
-    """Trigger AI analysis for a failed pipeline run."""
+    """
+    Queue AI analysis for a failed pipeline run.
+    Returns immediately with a task_id.
+    Client should poll GET /tasks/{task_id} for result.
+    """
     run = PipelineRunService.get_run_by_id(db, run_id)
     if not run:
         raise HTTPException(
@@ -161,13 +169,66 @@ def analyze_run(
             detail="Can only analyze failed runs"
         )
 
-    analysis = AIAnalysisService.analyze_run(db, run_id)
-    if not analysis:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="AI analysis failed. Check logs for details."
+    existing = AIAnalysisService.get_analysis_for_run(db, run_id)
+    if existing:
+        return AnalysisTaskResponse(
+            task_id="already-analyzed",
+            run_id=str(run_id),
+            status="completed",
+            message="Analysis already exists. Call GET /analysis to fetch it."
         )
-    return analysis
+
+    task = analyze_pipeline_run.delay(str(run_id))
+
+    return AnalysisTaskResponse(
+        task_id=task.id,
+        run_id=str(run_id),
+        status="queued",
+        message="Analysis queued. Poll GET /tasks/{task_id} for status."
+    )
+
+
+@router.get(
+    "/tasks/{task_id}",
+    response_model=TaskStatusResponse
+)
+def get_task_status(task_id: str):
+    """
+    Check the status of a background analysis task.
+    States: PENDING → STARTED → SUCCESS / FAILURE
+    """
+    task_result = celery_app.AsyncResult(task_id)
+
+    if task_result.state == "PENDING":
+        return TaskStatusResponse(
+            task_id=task_id,
+            status="pending",
+        )
+
+    if task_result.state == "STARTED":
+        return TaskStatusResponse(
+            task_id=task_id,
+            status="running",
+        )
+
+    if task_result.state == "SUCCESS":
+        return TaskStatusResponse(
+            task_id=task_id,
+            status="completed",
+            result=task_result.result
+        )
+
+    if task_result.state == "FAILURE":
+        return TaskStatusResponse(
+            task_id=task_id,
+            status="failed",
+            error=str(task_result.result)
+        )
+
+    return TaskStatusResponse(
+        task_id=task_id,
+        status=task_result.state.lower()
+    )
 
 
 @router.get(

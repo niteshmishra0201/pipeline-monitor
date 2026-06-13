@@ -73,3 +73,24 @@ class PipelineRunWithAnalysis(PipelineRunResponse):
     ai_analysis: Optional[AIAnalysisResponse] = None
 
     model_config = {"from_attributes": True}
+
+
+class AnalysisTaskResponse(BaseModel):
+    """
+    Returned immediately when analysis is queued.
+    Client uses task_id to check status.
+    """
+    task_id: str
+    run_id: str
+    status: str
+    message: str
+
+
+class TaskStatusResponse(BaseModel):
+    """
+    Returned when client checks task status.
+    """
+    task_id: str
+    status: str
+    result: Optional[dict] = None
+    error: Optional[str] = None

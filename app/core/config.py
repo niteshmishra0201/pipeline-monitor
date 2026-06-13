@@ -7,6 +7,7 @@ class Settings(BaseSettings):
     DATABASE_URL: str
     GROQ_API_KEY: str = ""
     LLM_MODEL: str = "llama3-8b-8192"
+    REDIS_URL: str = "redis://localhost:6379/0"
 
     class Config:
         env_file = ".env"
