@@ -1,4 +1,4 @@
-from langchain_openai import ChatOpenAI
+from langchain_groq import ChatGroq
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.output_parsers import JsonOutputParser
 from langchain_core.exceptions import OutputParserException
@@ -58,9 +58,9 @@ Provide your analysis as JSON only."""
 class AIAnalyzer:
 
     def __init__(self):
-        self.llm = ChatOpenAI(
+        self.llm = ChatGroq(
             model=settings.LLM_MODEL,
-            api_key=settings.OPENAI_API_KEY,
+            api_key=settings.GROQ_API_KEY,
             temperature=0.1,
             max_tokens=1000
         )
