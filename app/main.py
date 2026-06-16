@@ -13,7 +13,7 @@ from app.core.exceptions import (
     sqlalchemy_exception_handler,
     global_exception_handler
 )
-
+from app.api.ws import router as ws_router
 load_dotenv()
 
 app = FastAPI(
@@ -37,7 +37,7 @@ app.add_exception_handler(Exception, global_exception_handler)
 
 app.include_router(pipelines_router, prefix="/api/v1")
 app.include_router(webhooks_router, prefix="/api/v1")
-
+app.include_router(ws_router)
 
 @app.get("/")
 def root():

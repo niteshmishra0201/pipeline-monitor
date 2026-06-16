@@ -6,8 +6,11 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     DATABASE_URL: str
     GROQ_API_KEY: str = ""
-    LLM_MODEL: str = "llama3-8b-8192"
+    LLM_MODEL: str = "llama-3.3-70b-versatile"
     REDIS_URL: str = "redis://localhost:6379/0"
+    SLACK_WEBHOOK_URL: str = ""
+    SLACK_ENABLED: bool = False
+    FAILURE_ALERT_THRESHOLD: int = 3
 
     class Config:
         env_file = ".env"

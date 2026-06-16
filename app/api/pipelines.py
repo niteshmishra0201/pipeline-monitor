@@ -2,7 +2,6 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from typing import List
 from uuid import UUID
-from datetime import datetime, timezone
 
 from app.core.database import get_db
 from app.schemas.pipeline import (
@@ -11,7 +10,6 @@ from app.schemas.pipeline import (
     PipelineRunResponse,
     PipelineRunWithAnalysis,
     AIAnalysisResponse,
-    PipelineRunCreate,
     AnalysisTaskResponse,
     TaskStatusResponse
 )
@@ -62,66 +60,6 @@ def get_failed_runs(
 ):
     """Get recent failed pipeline runs across all pipelines."""
     return PipelineRunService.get_recent_failed_runs(db, limit)
-
-
-@router.post(
-    "/runs/test-failed",
-    response_model=PipelineRunResponse,
-    status_code=status.HTTP_201_CREATED,
-    tags=["Testing"]
-)
-def create_test_failed_run(
-    pipeline_id: UUID,
-    db: Session = Depends(get_db)
-):
-    """
-    Creates a fake failed run with real-looking logs.
-    Only for testing the AI analyzer — remove before production.
-    """
-    fake_logs = """
-    Run setup: Downloading actions/checkout@v3
-    Run setup: Downloading actions/setup-python@v4
-    Setting up Python 3.11
-
-    Run pip install -r requirements.txt
-    Collecting fastapi==0.104.1
-    Collecting pydantic==2.5.0
-    Collecting sqlalchemy==2.0.23
-
-    ERROR: pip's dependency resolver does not currently take into account
-    all the packages that are installed. This behaviour is the source of
-    the following dependency conflicts.
-
-    ERROR: Could not find a version that satisfies the requirement
-    pydantic-core==2.14.1 (from versions: 2.10.1, 2.11.0, 2.12.0)
-
-    ERROR: No matching distribution found for pydantic-core==2.14.1
-
-    Traceback (most recent call last):
-      File "/usr/local/lib/python3.11/site-packages/pip/_internal/cli/base_command.py", line 160, in exc_logger
-        status = self.run(options, args)
-      File "/usr/local/lib/python3.11/site-packages/pip/_internal/commands/install.py", line 390, in run
-        requirement_set = resolver.resolve(
-    pip._internal.exceptions.DistributionNotFound: No matching distribution found for pydantic-core==2.14.1
-
-    ERROR: Process completed with exit code 1.
-    """
-
-    run_data = PipelineRunCreate(
-        pipeline_id=pipeline_id,
-        run_number=42,
-        status=PipelineStatus.failed,
-        branch="feature/add-auth",
-        commit_sha="a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2",
-        commit_message="Add JWT authentication middleware",
-        triggered_by="nitesh",
-        started_at=datetime.now(timezone.utc),
-        finished_at=datetime.now(timezone.utc),
-        duration_seconds=47,
-        logs=fake_logs
-    )
-
-    return PipelineRunService.create_run(db, run_data)
 
 
 @router.get(

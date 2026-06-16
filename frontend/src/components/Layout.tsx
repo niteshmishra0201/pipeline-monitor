@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { GitBranch, Activity, AlertCircle, Home, Menu, X } from 'lucide-react'
+import { useWebSocket } from '../hooks/useWebSocket'
+import { useQueryClient } from '@tanstack/react-query'
 
 interface LayoutProps {
   children: React.ReactNode
   currentPage: string
-  onNavigate: (page: string) => void
+  onNavigate: (page: string, id?: string) => void
 }
 
 const navItems = [
@@ -16,11 +18,21 @@ const navItems = [
 
 export default function Layout({ children, currentPage, onNavigate }: LayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const queryClient = useQueryClient()
+
+  const { isConnected } = useWebSocket((message) => {
+    if (message.event === 'analysis_completed') {
+      queryClient.invalidateQueries({ queryKey: ['failedRuns'] })
+      queryClient.invalidateQueries({ queryKey: ['run', message.data.run_id as string] })
+    }
+    if (message.event === 'pipeline_run_created' || message.event === 'pipeline_run_failed') {
+      queryClient.invalidateQueries({ queryKey: ['failedRuns'] })
+      queryClient.invalidateQueries({ queryKey: ['pipelines'] })
+    }
+  })
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh' }}>
-
-      {/* Sidebar */}
       <aside style={{
         width: sidebarOpen ? '220px' : '60px',
         background: 'var(--bg-card)',
@@ -31,8 +43,6 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
         flexShrink: 0,
         overflow: 'hidden',
       }}>
-
-        {/* Logo */}
         <div style={{
           padding: '16px',
           borderBottom: '1px solid var(--border)',
@@ -66,7 +76,6 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
           )}
         </div>
 
-        {/* Nav items */}
         <nav style={{ padding: '8px', flex: 1 }}>
           {navItems.map(({ id, label, icon: Icon }) => {
             const isActive = currentPage === id
@@ -106,23 +115,41 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
           })}
         </nav>
 
-        {/* Footer */}
-        {sidebarOpen && (
-          <div style={{
-            padding: '12px 16px',
-            borderTop: '1px solid var(--border)',
-            color: 'var(--text-muted)',
-            fontSize: '11px',
-          }}>
-            v0.1.0 · development
-          </div>
-        )}
+        <div style={{
+          padding: '12px 16px',
+          borderTop: '1px solid var(--border)',
+        }}>
+          {sidebarOpen ? (
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontSize: '11px',
+              color: 'var(--text-muted)',
+            }}>
+              <div style={{
+                width: '6px',
+                height: '6px',
+                borderRadius: '50%',
+                background: isConnected ? 'var(--success)' : 'var(--failed)',
+                flexShrink: 0,
+              }} />
+              {isConnected ? 'Live' : 'Reconnecting...'}
+              <span style={{ marginLeft: 'auto' }}>v0.1.0</span>
+            </div>
+          ) : (
+            <div style={{
+              width: '6px',
+              height: '6px',
+              borderRadius: '50%',
+              background: isConnected ? 'var(--success)' : 'var(--failed)',
+              margin: '0 auto',
+            }} />
+          )}
+        </div>
       </aside>
 
-      {/* Main content */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-
-        {/* Top bar */}
         <header style={{
           height: '57px',
           borderBottom: '1px solid var(--border)',
@@ -131,6 +158,7 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
           padding: '0 24px',
           background: 'var(--bg-card)',
           flexShrink: 0,
+          justifyContent: 'space-between',
         }}>
           <span style={{
             color: 'var(--text-secondary)',
@@ -139,9 +167,23 @@ export default function Layout({ children, currentPage, onNavigate }: LayoutProp
           }}>
             {navItems.find(n => n.id === currentPage)?.label ?? 'Dashboard'}
           </span>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            gap: '6px',
+            fontSize: '11px',
+            color: isConnected ? 'var(--success)' : 'var(--text-muted)',
+          }}>
+            <div style={{
+              width: '5px',
+              height: '5px',
+              borderRadius: '50%',
+              background: isConnected ? 'var(--success)' : 'var(--text-muted)',
+            }} />
+            {isConnected ? 'Real-time connected' : 'Connecting...'}
+          </div>
         </header>
 
-        {/* Page content */}
         <main style={{
           flex: 1,
           overflow: 'auto',
