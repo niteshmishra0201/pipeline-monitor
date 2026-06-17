@@ -181,4 +181,4 @@ Dashboard showing pipeline health and recent failures with AI analysis.
 
 ## License
 
-MIT
+NM
