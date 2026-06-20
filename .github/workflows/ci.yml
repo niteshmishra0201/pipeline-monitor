@@ -42,7 +42,7 @@ jobs:
             --exclude=__pycache__ \
             --ignore=E501,W503,E203
 
-- name: Validate Python imports
+    name: Validate Python imports
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
