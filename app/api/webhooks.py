@@ -1,30 +1,27 @@
-from fastapi import APIRouter, Depends, HTTPException, Request, Header
-from sqlalchemy.orm import Session
-from typing import Optional
-import hmac
 import hashlib
+import hmac
+from typing import Optional
+
+from fastapi import APIRouter, Depends, Header, Request
+from sqlalchemy.orm import Session
+
 
 from app.core.database import get_db
-from app.core.config import settings
-from app.schemas.pipeline import PipelineRunCreate
-from app.services.pipeline_service import PipelineRunService, PipelineService
 from app.models.pipeline import PipelineStatus
+from app.schemas.pipeline import PipelineRunCreate
+from app.services.pipeline_service import PipelineRunService
 
-router = APIRouter(
-    prefix="/webhooks",
-    tags=["Webhooks"]
-)
+router = APIRouter(prefix="/webhooks", tags=["Webhooks"])
+
 
 def verify_github_signature(payload: bytes, signature: str, secret: str) -> bool:
     """
     Verify that the webhook actually came from GitHub.
     GitHub signs every webhook payload with HMAC-SHA256.
     """
-    expected = "sha256=" + hmac.new(
-        secret.encode(),
-        payload,
-        hashlib.sha256
-    ).hexdigest()
+    expected = (
+        "sha256=" + hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
+    )
     return hmac.compare_digest(expected, signature)
 
 
@@ -39,7 +36,7 @@ async def github_webhook(
     Receives webhook events from GitHub Actions.
     Listens for workflow_run events and stores them as pipeline runs.
     """
-    payload = await request.body()
+
     data = await request.json()
 
     if x_github_event == "ping":
@@ -60,19 +57,22 @@ async def github_webhook(
 
     run_status = status_map.get(
         workflow_run.get("conclusion") or workflow_run.get("status"),
-        PipelineStatus.running
+        PipelineStatus.running,
     )
 
-    pipeline = db.query(
-        __import__('app.models.pipeline', fromlist=['Pipeline']).Pipeline
-    ).filter_by(repo_url=repo.get("html_url")).first()
+    pipeline = (
+        db.query(__import__("app.models.pipeline", fromlist=["Pipeline"]).Pipeline)
+        .filter_by(repo_url=repo.get("html_url"))
+        .first()
+    )
 
     if not pipeline:
         from app.models.pipeline import Pipeline
+
         pipeline = Pipeline(
             name=repo.get("name", "Unknown"),
             repo_url=repo.get("html_url", ""),
-            branch=workflow_run.get("head_branch", "main")
+            branch=workflow_run.get("head_branch", "main"),
         )
         db.add(pipeline)
         db.commit()
@@ -99,7 +99,7 @@ async def github_webhook(
         started_at=parse_dt(workflow_run.get("run_started_at")),
         finished_at=parse_dt(workflow_run.get("updated_at")),
         duration_seconds=None,
-        logs=None
+        logs=None,
     )
 
     run = PipelineRunService.create_run(db, run_data)
@@ -107,5 +107,5 @@ async def github_webhook(
     return {
         "message": "Pipeline run recorded",
         "run_id": str(run.id),
-        "status": run_status.value
+        "status": run_status.value,
     }

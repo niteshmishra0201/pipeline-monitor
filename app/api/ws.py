@@ -1,8 +1,8 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from app.core.websocket_manager import manager
-from app.core.database import SessionLocal
-from app.models.pipeline import PipelineRun, PipelineStatus
 import logging
+
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
+
+from app.core.websocket_manager import manager
 
 logger = logging.getLogger(__name__)
 
@@ -14,7 +14,7 @@ async def websocket_endpoint(websocket: WebSocket):
     """
     Main WebSocket endpoint.
     Browser connects here and receives real-time events.
-    
+
     Events the server sends:
     - pipeline_run_created: a new run was detected
     - pipeline_run_failed: a run just failed
@@ -24,9 +24,11 @@ async def websocket_endpoint(websocket: WebSocket):
     await manager.connect(websocket)
 
     try:
-        await manager.send_personal(websocket, "connected", {
-            "message": "Connected to Pipeline Monitor real-time feed"
-        })
+        await manager.send_personal(
+            websocket,
+            "connected",
+            {"message": "Connected to Pipeline Monitor real-time feed"},
+        )
 
         while True:
             data = await websocket.receive_text()

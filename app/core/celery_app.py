@@ -1,11 +1,12 @@
 from celery import Celery
+
 from app.core.config import settings
 
 celery_app = Celery(
     "pipeline_monitor",
     broker=settings.REDIS_URL,
     backend=settings.REDIS_URL,
-    include=["app.tasks.analysis_tasks"]
+    include=["app.tasks.analysis_tasks"],
 )
 
 celery_app.conf.update(

@@ -1,9 +1,19 @@
-from sqlalchemy import Column, String, Integer, Boolean, DateTime, Text, Enum, Float, ForeignKey
+import enum
+import uuid
+
+from sqlalchemy import (
+    Column,
+    String,
+    Integer,
+    Boolean,
+    DateTime,
+    Text,
+    Enum,
+    ForeignKey,
+)
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
-import uuid
-import enum
 
 from app.core.database import Base
 
@@ -60,7 +70,9 @@ class AIAnalysis(Base):
     __tablename__ = "ai_analyses"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    run_id = Column(UUID(as_uuid=True), ForeignKey("pipeline_runs.id"), nullable=False, unique=True)
+    run_id = Column(
+        UUID(as_uuid=True), ForeignKey("pipeline_runs.id"), nullable=False, unique=True
+    )
     root_cause = Column(Text, nullable=False)
     fix_suggestion = Column(Text, nullable=False)
     severity = Column(String(20))

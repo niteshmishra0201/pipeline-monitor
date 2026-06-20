@@ -1,7 +1,9 @@
-from pydantic import BaseModel
-from typing import Optional, List
 from datetime import datetime
+from typing import Optional
 from uuid import UUID
+
+from pydantic import BaseModel
+
 from app.models.pipeline import PipelineStatus
 
 
@@ -70,6 +72,7 @@ class PipelineRunWithAnalysis(PipelineRunResponse):
     Extended run response that includes AI analysis if available.
     Used when frontend needs the full picture of a failed run.
     """
+
     ai_analysis: Optional[AIAnalysisResponse] = None
 
     model_config = {"from_attributes": True}
@@ -80,6 +83,7 @@ class AnalysisTaskResponse(BaseModel):
     Returned immediately when analysis is queued.
     Client uses task_id to check status.
     """
+
     task_id: str
     run_id: str
     status: str
@@ -90,6 +94,7 @@ class TaskStatusResponse(BaseModel):
     """
     Returned when client checks task status.
     """
+
     task_id: str
     status: str
     result: Optional[dict] = None

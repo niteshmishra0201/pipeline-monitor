@@ -1,9 +1,10 @@
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
-from uuid import UUID
 from typing import List, Optional
+from uuid import UUID
 
-from app.models.pipeline import Pipeline, PipelineRun, AIAnalysis, PipelineStatus
+from sqlalchemy import desc
+from sqlalchemy.orm import Session
+
+from app.models.pipeline import AIAnalysis, Pipeline, PipelineRun, PipelineStatus
 from app.schemas.pipeline import PipelineCreate, PipelineRunCreate
 
 
@@ -11,11 +12,7 @@ class PipelineService:
 
     @staticmethod
     def create_pipeline(db: Session, data: PipelineCreate) -> Pipeline:
-        pipeline = Pipeline(
-            name=data.name,
-            repo_url=data.repo_url,
-            branch=data.branch
-        )
+        pipeline = Pipeline(name=data.name, repo_url=data.repo_url, branch=data.branch)
         db.add(pipeline)
         db.commit()
         db.refresh(pipeline)
@@ -23,21 +20,20 @@ class PipelineService:
 
     @staticmethod
     def get_all_pipelines(db: Session) -> List[Pipeline]:
-        return db.query(Pipeline).filter(
-            Pipeline.is_active == True
-        ).order_by(desc(Pipeline.created_at)).all()
+        return (
+            db.query(Pipeline)
+            .filter(Pipeline.is_active.is_(True))
+            .order_by(desc(Pipeline.created_at))
+            .all()
+        )
 
     @staticmethod
     def get_pipeline_by_id(db: Session, pipeline_id: UUID) -> Optional[Pipeline]:
-        return db.query(Pipeline).filter(
-            Pipeline.id == pipeline_id
-        ).first()
+        return db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
 
     @staticmethod
     def delete_pipeline(db: Session, pipeline_id: UUID) -> bool:
-        pipeline = db.query(Pipeline).filter(
-            Pipeline.id == pipeline_id
-        ).first()
+        pipeline = db.query(Pipeline).filter(Pipeline.id == pipeline_id).first()
         if not pipeline:
             return False
         pipeline.is_active = False
@@ -60,7 +56,7 @@ class PipelineRunService:
             started_at=data.started_at,
             finished_at=data.finished_at,
             duration_seconds=data.duration_seconds,
-            logs=data.logs
+            logs=data.logs,
         )
         db.add(run)
         db.commit()
@@ -69,31 +65,29 @@ class PipelineRunService:
 
     @staticmethod
     def get_runs_for_pipeline(
-        db: Session,
-        pipeline_id: UUID,
-        limit: int = 20
+        db: Session, pipeline_id: UUID, limit: int = 20
     ) -> List[PipelineRun]:
-        return db.query(PipelineRun).filter(
-            PipelineRun.pipeline_id == pipeline_id
-        ).order_by(desc(PipelineRun.created_at)).limit(limit).all()
+        return (
+            db.query(PipelineRun)
+            .filter(PipelineRun.pipeline_id == pipeline_id)
+            .order_by(desc(PipelineRun.created_at))
+            .limit(limit)
+            .all()
+        )
 
     @staticmethod
-    def get_recent_failed_runs(
-        db: Session,
-        limit: int = 10
-    ) -> List[PipelineRun]:
-        return db.query(PipelineRun).filter(
-            PipelineRun.status == PipelineStatus.failed
-        ).order_by(desc(PipelineRun.created_at)).limit(limit).all()
+    def get_recent_failed_runs(db: Session, limit: int = 10) -> List[PipelineRun]:
+        return (
+            db.query(PipelineRun)
+            .filter(PipelineRun.status == PipelineStatus.failed)
+            .order_by(desc(PipelineRun.created_at))
+            .limit(limit)
+            .all()
+        )
 
     @staticmethod
-    def get_run_by_id(
-        db: Session,
-        run_id: UUID
-    ) -> Optional[PipelineRun]:
-        return db.query(PipelineRun).filter(
-            PipelineRun.id == run_id
-        ).first()
+    def get_run_by_id(db: Session, run_id: UUID) -> Optional[PipelineRun]:
+        return db.query(PipelineRun).filter(PipelineRun.id == run_id).first()
 
 
 class AIAnalysisService:
@@ -106,9 +100,7 @@ class AIAnalysisService:
         """
         from app.services.ai_analyzer import ai_analyzer
 
-        run = db.query(PipelineRun).filter(
-            PipelineRun.id == run_id
-        ).first()
+        run = db.query(PipelineRun).filter(PipelineRun.id == run_id).first()
 
         if not run:
             return None
@@ -116,15 +108,11 @@ class AIAnalysisService:
         if run.status != PipelineStatus.failed:
             return None
 
-        existing = db.query(AIAnalysis).filter(
-            AIAnalysis.run_id == run_id
-        ).first()
+        existing = db.query(AIAnalysis).filter(AIAnalysis.run_id == run_id).first()
         if existing:
             return existing
 
-        pipeline = db.query(Pipeline).filter(
-            Pipeline.id == run.pipeline_id
-        ).first()
+        pipeline = db.query(Pipeline).filter(Pipeline.id == run.pipeline_id).first()
 
         logs = run.logs or "No logs available for this run."
 
@@ -132,7 +120,7 @@ class AIAnalysisService:
             logs=logs,
             pipeline_name=pipeline.name if pipeline else "Unknown",
             branch=run.branch or "main",
-            triggered_by=run.triggered_by or "unknown"
+            triggered_by=run.triggered_by or "unknown",
         )
 
         if not result["success"]:
@@ -148,7 +136,7 @@ class AIAnalysisService:
             error_category=analysis_data.get("error_category", "unknown"),
             confidence=analysis_data.get("confidence", "low"),
             summary=analysis_data.get("summary", ""),
-            model_used=analysis_data.get("model_used", "gpt-4o-mini")
+            model_used=analysis_data.get("model_used", "gpt-4o-mini"),
         )
 
         db.add(analysis)
@@ -157,13 +145,8 @@ class AIAnalysisService:
         return analysis
 
     @staticmethod
-    def get_analysis_for_run(
-        db: Session,
-        run_id: UUID
-    ) -> Optional[AIAnalysis]:
+    def get_analysis_for_run(db: Session, run_id: UUID) -> Optional[AIAnalysis]:
         """
         Fetch existing analysis for a run — no AI call.
         """
-        return db.query(AIAnalysis).filter(
-            AIAnalysis.run_id == run_id
-        ).first()
+        return db.query(AIAnalysis).filter(AIAnalysis.run_id == run_id).first()

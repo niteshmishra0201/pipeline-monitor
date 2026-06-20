@@ -1,9 +1,10 @@
 from celery.utils.log import get_task_logger
 from sqlalchemy.orm import Session
+
 from app.core.celery_app import celery_app
-from app.core.database import SessionLocal
 from app.core.config import settings
-from app.models.pipeline import PipelineRun, PipelineStatus, AIAnalysis, Pipeline
+from app.core.database import SessionLocal
+from app.models.pipeline import AIAnalysis, Pipeline, PipelineRun, PipelineStatus
 from app.services.ai_analyzer import ai_analyzer
 from app.services.slack_service import slack_service
 
@@ -13,16 +14,14 @@ logger = get_task_logger(__name__)
 async def broadcast_event(event_type: str, data: dict):
     try:
         from app.core.websocket_manager import manager
+
         await manager.broadcast(event_type, data)
     except Exception as e:
         logger.error(f"Failed to broadcast: {e}")
 
 
 async def send_slack_if_needed(
-    db: Session,
-    pipeline: Pipeline,
-    run: PipelineRun,
-    analysis_data: dict
+    db: Session, pipeline: Pipeline, run: PipelineRun, analysis_data: dict
 ):
     """
     Checks failure threshold and sends Slack alert if crossed.
@@ -30,8 +29,7 @@ async def send_slack_if_needed(
     """
     try:
         failure_count = slack_service.check_failure_threshold(
-            db=db,
-            pipeline_id=str(pipeline.id)
+            db=db, pipeline_id=str(pipeline.id)
         )
 
         logger.info(
@@ -49,7 +47,7 @@ async def send_slack_if_needed(
                 failure_count=failure_count,
                 root_cause=analysis_data.get("root_cause"),
                 severity=analysis_data.get("severity"),
-                run_id=str(run.id)
+                run_id=str(run.id),
             )
     except Exception as e:
         logger.error(f"Slack alert failed: {e}")
@@ -59,7 +57,7 @@ async def send_slack_if_needed(
     bind=True,
     max_retries=3,
     default_retry_delay=60,
-    name="app.tasks.analysis_tasks.analyze_pipeline_run"
+    name="app.tasks.analysis_tasks.analyze_pipeline_run",
 )
 def analyze_pipeline_run(self, run_id: str) -> dict:
     """
@@ -72,11 +70,10 @@ def analyze_pipeline_run(self, run_id: str) -> dict:
 
     try:
         from uuid import UUID
+
         run_uuid = UUID(run_id)
 
-        run = db.query(PipelineRun).filter(
-            PipelineRun.id == run_uuid
-        ).first()
+        run = db.query(PipelineRun).filter(PipelineRun.id == run_uuid).first()
 
         if not run:
             logger.error(f"Run {run_id} not found")
@@ -86,21 +83,13 @@ def analyze_pipeline_run(self, run_id: str) -> dict:
             logger.warning(f"Run {run_id} is not failed")
             return {"success": False, "error": "Run is not failed"}
 
-        existing = db.query(AIAnalysis).filter(
-            AIAnalysis.run_id == run_uuid
-        ).first()
+        existing = db.query(AIAnalysis).filter(AIAnalysis.run_id == run_uuid).first()
 
         if existing:
             logger.info(f"Analysis already exists for run {run_id}")
-            return {
-                "success": True,
-                "analysis_id": str(existing.id),
-                "cached": True
-            }
+            return {"success": True, "analysis_id": str(existing.id), "cached": True}
 
-        pipeline = db.query(Pipeline).filter(
-            Pipeline.id == run.pipeline_id
-        ).first()
+        pipeline = db.query(Pipeline).filter(Pipeline.id == run.pipeline_id).first()
 
         logger.info(f"Calling AI analyzer for run {run_id}")
 
@@ -108,14 +97,13 @@ def analyze_pipeline_run(self, run_id: str) -> dict:
             logs=run.logs or "No logs available",
             pipeline_name=pipeline.name if pipeline else "Unknown",
             branch=run.branch or "main",
-            triggered_by=run.triggered_by or "unknown"
+            triggered_by=run.triggered_by or "unknown",
         )
 
         if not result["success"]:
             logger.error(f"AI analysis failed: {result.get('error')}")
             raise self.retry(
-                exc=Exception(result.get("error", "AI failed")),
-                countdown=30
+                exc=Exception(result.get("error", "AI failed")), countdown=30
             )
 
         analysis_data = result["analysis"]
@@ -128,7 +116,7 @@ def analyze_pipeline_run(self, run_id: str) -> dict:
             error_category=analysis_data.get("error_category", "unknown"),
             confidence=analysis_data.get("confidence", "low"),
             summary=analysis_data.get("summary", ""),
-            model_used=settings.LLM_MODEL
+            model_used=settings.LLM_MODEL,
         )
 
         db.add(analysis)
@@ -140,13 +128,16 @@ def analyze_pipeline_run(self, run_id: str) -> dict:
         import asyncio
 
         async def post_analysis_tasks():
-            await broadcast_event("analysis_completed", {
-                "run_id": run_id,
-                "pipeline_id": str(run.pipeline_id),
-                "severity": analysis_data.get("severity", "medium"),
-                "summary": analysis_data.get("summary", ""),
-                "error_category": analysis_data.get("error_category", "unknown")
-            })
+            await broadcast_event(
+                "analysis_completed",
+                {
+                    "run_id": run_id,
+                    "pipeline_id": str(run.pipeline_id),
+                    "severity": analysis_data.get("severity", "medium"),
+                    "summary": analysis_data.get("summary", ""),
+                    "error_category": analysis_data.get("error_category", "unknown"),
+                },
+            )
 
             if pipeline:
                 await send_slack_if_needed(db, pipeline, run, analysis_data)
@@ -159,11 +150,7 @@ def analyze_pipeline_run(self, run_id: str) -> dict:
         except Exception as async_err:
             logger.warning(f"Post-analysis tasks failed: {async_err}")
 
-        return {
-            "success": True,
-            "analysis_id": str(analysis.id),
-            "cached": False
-        }
+        return {"success": True, "analysis_id": str(analysis.id), "cached": False}
 
     except Exception as exc:
         db.rollback()

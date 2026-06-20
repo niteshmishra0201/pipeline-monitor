@@ -1,7 +1,8 @@
-from fastapi import WebSocket
-from typing import List
 import json
 import logging
+from typing import List
+
+from fastapi import WebSocket
 
 logger = logging.getLogger(__name__)
 
@@ -32,10 +33,7 @@ class ConnectionManager:
         Send a message to ALL connected browsers at once.
         If a connection is broken, remove it silently.
         """
-        message = json.dumps({
-            "event": event_type,
-            "data": data
-        })
+        message = json.dumps({"event": event_type, "data": data})
 
         broken_connections = []
 
@@ -53,10 +51,7 @@ class ConnectionManager:
         Send a message to ONE specific browser connection.
         Used for sending the initial state when a browser first connects.
         """
-        message = json.dumps({
-            "event": event_type,
-            "data": data
-        })
+        message = json.dumps({"event": event_type, "data": data})
         await websocket.send_text(message)
 
 
