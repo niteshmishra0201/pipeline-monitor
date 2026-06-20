@@ -42,23 +42,23 @@ jobs:
             --exclude=__pycache__ \
             --ignore=E501,W503,E203
 
-    name: Validate Python imports
+      - name: Validate Python imports
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL }}
           REDIS_URL: ${{ secrets.REDIS_URL }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
-          python -c "from app.main import app; print('✅ FastAPI app imports OK')"
-          python -c "from app.core.config import settings; print('✅ Config imports OK')"
-          python -c "from app.core.database import engine; print('✅ Database imports OK')"
-          python -c "from app.models.pipeline import Pipeline, PipelineRun, AIAnalysis; print('✅ Models import OK')"
-          python -c "from app.services.ai_analyzer import AIAnalyzer; print('✅ AI analyzer imports OK')"
-          python -c "from app.tasks.analysis_tasks import analyze_pipeline_run; print('✅ Celery tasks import OK')"
+          python -c "from app.main import app; print('FastAPI app imports OK')"
+          python -c "from app.core.config import settings; print('Config imports OK')"
+          python -c "from app.core.database import engine; print('Database imports OK')"
+          python -c "from app.models.pipeline import Pipeline, PipelineRun, AIAnalysis; print('Models import OK')"
+          python -c "from app.services.ai_analyzer import AIAnalyzer; print('AI analyzer imports OK')"
+          python -c "from app.tasks.analysis_tasks import analyze_pipeline_run; print('Celery tasks import OK')"
 
       - name: Check requirements.txt is up to date
         run: |
           pip freeze > /tmp/current_requirements.txt
-          echo "✅ Requirements check passed"
+          echo "Requirements check passed"
 
   frontend-validate:
     name: Frontend Validate
@@ -106,11 +106,11 @@ jobs:
       - name: Check for known vulnerabilities
         run: |
           pip install -r requirements.txt
-          safety check --json || echo "⚠️ Some vulnerabilities found - review above"
+          safety check --json || echo "Some vulnerabilities found - review above"
 
       - name: Run bandit security linter
         run: |
           bandit -r app/ \
             -x app/tests \
             --severity-level medium \
-            -f txt || echo "⚠️ Security issues found - review above"
+            -f txt || echo "Security issues found - review above"
