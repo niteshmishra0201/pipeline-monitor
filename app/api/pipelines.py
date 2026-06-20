@@ -49,9 +49,7 @@ def get_run_with_analysis(run_id: UUID, db: Session = Depends(get_db)):
     """Get a single run with its AI analysis if available."""
     run = PipelineRunService.get_run_by_id(db, run_id)
     if not run:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Run {run_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Run {run_id} not found")
     return run
 
 
@@ -68,9 +66,7 @@ def analyze_run(run_id: UUID, db: Session = Depends(get_db)):
     """
     run = PipelineRunService.get_run_by_id(db, run_id)
     if not run:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, detail=f"Run {run_id} not found"
-        )
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"Run {run_id} not found")
 
     if run.status != PipelineStatus.failed:
         raise HTTPException(
@@ -118,14 +114,10 @@ def get_task_status(task_id: str):
         )
 
     if task_result.state == "SUCCESS":
-        return TaskStatusResponse(
-            task_id=task_id, status="completed", result=task_result.result
-        )
+        return TaskStatusResponse(task_id=task_id, status="completed", result=task_result.result)
 
     if task_result.state == "FAILURE":
-        return TaskStatusResponse(
-            task_id=task_id, status="failed", error=str(task_result.result)
-        )
+        return TaskStatusResponse(task_id=task_id, status="failed", error=str(task_result.result))
 
     return TaskStatusResponse(task_id=task_id, status=task_result.state.lower())
 
@@ -166,9 +158,7 @@ def delete_pipeline(pipeline_id: UUID, db: Session = Depends(get_db)):
 
 
 @router.get("/{pipeline_id}/runs", response_model=List[PipelineRunResponse])
-def get_pipeline_runs(
-    pipeline_id: UUID, limit: int = 20, db: Session = Depends(get_db)
-):
+def get_pipeline_runs(pipeline_id: UUID, limit: int = 20, db: Session = Depends(get_db)):
     """Get all runs for a specific pipeline."""
     pipeline = PipelineService.get_pipeline_by_id(db, pipeline_id)
     if not pipeline:

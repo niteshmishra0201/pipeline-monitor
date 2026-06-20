@@ -5,7 +5,6 @@ from typing import Optional
 from fastapi import APIRouter, Depends, Header, Request
 from sqlalchemy.orm import Session
 
-
 from app.core.database import get_db
 from app.models.pipeline import PipelineStatus
 from app.schemas.pipeline import PipelineRunCreate
@@ -19,9 +18,7 @@ def verify_github_signature(payload: bytes, signature: str, secret: str) -> bool
     Verify that the webhook actually came from GitHub.
     GitHub signs every webhook payload with HMAC-SHA256.
     """
-    expected = (
-        "sha256=" + hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
-    )
+    expected = "sha256=" + hmac.new(secret.encode(), payload, hashlib.sha256).hexdigest()
     return hmac.compare_digest(expected, signature)
 
 

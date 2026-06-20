@@ -2,14 +2,14 @@ import enum
 import uuid
 
 from sqlalchemy import (
-    Column,
-    String,
-    Integer,
     Boolean,
+    Column,
     DateTime,
-    Text,
     Enum,
     ForeignKey,
+    Integer,
+    String,
+    Text,
 )
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import relationship
@@ -70,9 +70,7 @@ class AIAnalysis(Base):
     __tablename__ = "ai_analyses"
 
     id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
-    run_id = Column(
-        UUID(as_uuid=True), ForeignKey("pipeline_runs.id"), nullable=False, unique=True
-    )
+    run_id = Column(UUID(as_uuid=True), ForeignKey("pipeline_runs.id"), nullable=False, unique=True)
     root_cause = Column(Text, nullable=False)
     fix_suggestion = Column(Text, nullable=False)
     severity = Column(String(20))

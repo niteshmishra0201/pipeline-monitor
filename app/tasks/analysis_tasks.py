@@ -28,9 +28,7 @@ async def send_slack_if_needed(
     Runs after AI analysis completes.
     """
     try:
-        failure_count = slack_service.check_failure_threshold(
-            db=db, pipeline_id=str(pipeline.id)
-        )
+        failure_count = slack_service.check_failure_threshold(db=db, pipeline_id=str(pipeline.id))
 
         logger.info(
             f"Pipeline {pipeline.name} has failed "
@@ -102,9 +100,7 @@ def analyze_pipeline_run(self, run_id: str) -> dict:
 
         if not result["success"]:
             logger.error(f"AI analysis failed: {result.get('error')}")
-            raise self.retry(
-                exc=Exception(result.get("error", "AI failed")), countdown=30
-            )
+            raise self.retry(exc=Exception(result.get("error", "AI failed")), countdown=30)
 
         analysis_data = result["analysis"]
 

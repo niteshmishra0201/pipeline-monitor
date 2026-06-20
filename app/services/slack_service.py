@@ -78,9 +78,7 @@ class SlackService:
 
         try:
             async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    settings.SLACK_WEBHOOK_URL, json=message, timeout=10.0
-                )
+                response = await client.post(settings.SLACK_WEBHOOK_URL, json=message, timeout=10.0)
                 if response.status_code == 200:
                     logger.info(f"Slack alert sent for pipeline {pipeline_name}")
                     return True

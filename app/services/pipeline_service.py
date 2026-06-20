@@ -64,9 +64,7 @@ class PipelineRunService:
         return run
 
     @staticmethod
-    def get_runs_for_pipeline(
-        db: Session, pipeline_id: UUID, limit: int = 20
-    ) -> List[PipelineRun]:
+    def get_runs_for_pipeline(db: Session, pipeline_id: UUID, limit: int = 20) -> List[PipelineRun]:
         return (
             db.query(PipelineRun)
             .filter(PipelineRun.pipeline_id == pipeline_id)
