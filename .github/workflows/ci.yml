@@ -42,7 +42,11 @@ jobs:
             --exclude=__pycache__ \
             --ignore=E501,W503,E203
 
-      - name: Validate Python imports
+- name: Validate Python imports
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          REDIS_URL: ${{ secrets.REDIS_URL }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
           python -c "from app.main import app; print('✅ FastAPI app imports OK')"
           python -c "from app.core.config import settings; print('✅ Config imports OK')"
